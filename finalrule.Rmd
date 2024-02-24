@@ -23,12 +23,20 @@ library(arsenal)
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
 data<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
 
+
+
+
+# ***May need to clean, convert, or recode variables - here's one example
+
 # convert years experience as ordered factor variable
 # Create a vector of levels in correct order
 levels <- c("1- 4 years", "5-9 years", "10-14 years", "15-19 years", "20-24 years", "25-29 years")
 
 # Convert to an ordered factor
 data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. <- factor(data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.., levels = levels, ordered = TRUE)
+
+
+
 
 # set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
 labs<- c(What.is.your.age.in.years. = "Age",
@@ -39,7 +47,7 @@ labs<- c(What.is.your.age.in.years. = "Age",
 # Summary table
 ```{r, results='asis'}
 desc<-data%>%
-  select(What.is.your.age.in.years., How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year..) # add more variables
+  select(What.is.your.age.in.years., How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year..) # ***add more demographic variables
 
 # variable labels
 labels(desc)<-labs
@@ -56,7 +64,6 @@ summary(tableby(tmp, data = desc,
 
 ```
 # recode variables for workplace policies variable - analysis 1a (presence vs. absence of the policy)
-
 ```{r}
 # Recode institutional policies as 0 if it does not exist or not sure, NA if NA, and 1 if anythine else
 data$policies_institutional_1a <- ifelse(data$institutional.level.policies.for.results.notes.release. %in% c("This DOES NOT exist", "I am not sure"), 0, ifelse(is.na(data$variable), NA, 1))
@@ -65,81 +72,90 @@ data$policies_dept_1a <- ifelse(data$department..division..or.workgroup.level.po
 
 ```
 
-# recode variables for
 
+# recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
 ```{r}
-# Create a vector of variable names
-var.names <- c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently.") # add more variables
+#***adapt from the previous coding chunk
+```
 
+
+# recode variables for outcomes (harms, benefits, and workflow impact)
+```{r}
+# Ensure dplyr package is installed
+if(!require(dplyr)) install.packages('dplyr')
+
+# Load dplyr package
+library(dplyr)
+
+# Create a vector of variable names
+var.names <- c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently.") #add more variable names
 
 # Loop over the variables
 for (var in var.names) {
 
-  # Apply recode
-  data[[var]] <- recode(data[[var]], 
-                        "Strongly agree" = 5, 
-                        "Agree" = 4, 
-                        "Neither agree nor disagree" = 3, 
-                        "Disagree" = 2, 
-                        "Strongly disagree" = 1,
-                        "Not applicable for my position" = NA_real_)
+  # Create a new variable name with the suffix '_rc'
+  new.var <- paste(var, "rc", sep = "_")
+
+  # Apply recode and create a new variable in data
+  data[[new.var]] <- recode(data[[var]], 
+                            "Strongly agree" = 5, 
+                            "Agree" = 4, 
+                            "Neither agree nor disagree" = 3, 
+                            "Disagree" = 2, 
+                            "Strongly disagree" = 1,
+                            "Not applicable for my position" = NA_real_)
 }
+
+# ***Here's some sample code to reverse-code a variable if needed - may need to modify variable names: 
+# data$sending_results_rc <- recode(data$sending_results, `5` = 1, `4` = 2, `3` = 3, `2` = 4, `1` = 5, .default = NA_real_)
+
 ```
 
 
-
-# example for fitting a linear regression model
+# total the items for each outcome category
 ```{r}
+# WORKFLOW
+# define columns to sum for workflow category
+cols_to_sum <-c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently._rc") #***add the rest of the workflow variables
 
-#subset the variables that you are considering using in the model ***change these as needed
-tmp<- subset(data, select = c("verbal.dominance", "bl_yrs_of_training", "scenario",  "sc.race"))
+# create a new column for the summed columns
+data$workflow_total <- rowSums(data[cols_to_sum], na.rm = TRUE)
 
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
 
-#define intercept-only model
-intercept<-lm(verbal.dominance ~ 1, data = tmp)
+# *** similar process for benefits and risks variables
+# BENEFITS
 
-#define model with all predictors
-all<-lm(verbal.dominance~., data = tmp)
 
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed
-vd_race<-lm(verbal.dominance~ sc.race + scenario + bl_yrs_of_training, data = tmp) #change the covariates as needed
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(vd_race)
-
-#view summary stats for selected model
-summary(vd_race)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(vd_race)
-shapiro.test(vd_race$residuals) #assess normality of residuals
-
+# RISKS
 
 ```
 
-# table for model output
 
+# explore the distribution for numerical variables (workflow variables, in this example)
 ```{r}
-library(stargazer)
+#histogram
+hist(data$workflow_total)
 
-stargazer(vd_race, #***add more models here
-          type = "html",
-          out = "model_output.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Your title here")
+#summary stats
+summary(data$workflow_total)
 
-#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf
+#boxplot by public hospital/FQHC vs. other
+boxplot(data$workflow_total ~ data$In.what.setting.s..do.you.currently.work...select.all.that.apply...choice.Hospital.Medical.Facility..Public.or.Community.Based.Hospital..including.FQHC..)
 
+#Shapiro-Wilk test for normality
+shapiro.test(data$workflow_total)
+
+#QQ plot vs. normal
+qqnorm(data$workflow_total)
+qqline(data$workflow_total)
 
 ```
+# to-do next:
+
+## Factor analysis for outcome variables
+
+## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
+
+##	Bivariate analyses for GC involvement in policy – logistic and linear
+
+## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
