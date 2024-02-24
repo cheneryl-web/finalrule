@@ -1,0 +1,145 @@
+---
+title: "FinalRuleEDA"
+author: "Chenery Lowe"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=TRUE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+
+# set working directory
+setwd("C:/Users/clowe7/OneDrive - Stanford/Final Rule Analysis") #***You'll want to change the working directory to reflect the location where your files are stored
+
+# install packages
+library(dplyr)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(arsenal)
+
+# load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
+data<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
+
+# convert years experience as ordered factor variable
+# Create a vector of levels in correct order
+levels <- c("1- 4 years", "5-9 years", "10-14 years", "15-19 years", "20-24 years", "25-29 years")
+
+# Convert to an ordered factor
+data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. <- factor(data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.., levels = levels, ordered = TRUE)
+
+# set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
+labs<- c(What.is.your.age.in.years. = "Age",
+         How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. = "Years of experience")
+
+```
+
+# Summary table
+```{r, results='asis'}
+desc<-data%>%
+  select(What.is.your.age.in.years., How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year..) # add more variables
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize(X=myvars[1:(ncol(desc))])
+
+# *** if you wanted to stratify by a variable, you could do this: tmp<-formulize("***variable name", myvars[1:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+# recode variables for workplace policies variable - analysis 1a (presence vs. absence of the policy)
+
+```{r}
+# Recode institutional policies as 0 if it does not exist or not sure, NA if NA, and 1 if anythine else
+data$policies_institutional_1a <- ifelse(data$institutional.level.policies.for.results.notes.release. %in% c("This DOES NOT exist", "I am not sure"), 0, ifelse(is.na(data$variable), NA, 1))
+
+data$policies_dept_1a <- ifelse(data$department..division..or.workgroup.level.policies.for.results.notes.release. %in% c("This DOES NOT exist", "I am not sure"), 0, ifelse(is.na(data$variable), NA, 1))
+
+```
+
+# recode variables for
+
+```{r}
+# Create a vector of variable names
+var.names <- c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently.") # add more variables
+
+
+# Loop over the variables
+for (var in var.names) {
+
+  # Apply recode
+  data[[var]] <- recode(data[[var]], 
+                        "Strongly agree" = 5, 
+                        "Agree" = 4, 
+                        "Neither agree nor disagree" = 3, 
+                        "Disagree" = 2, 
+                        "Strongly disagree" = 1,
+                        "Not applicable for my position" = NA_real_)
+}
+```
+
+
+
+# example for fitting a linear regression model
+```{r}
+
+#subset the variables that you are considering using in the model ***change these as needed
+tmp<- subset(data, select = c("verbal.dominance", "bl_yrs_of_training", "scenario",  "sc.race"))
+
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(verbal.dominance ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(verbal.dominance~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed
+vd_race<-lm(verbal.dominance~ sc.race + scenario + bl_yrs_of_training, data = tmp) #change the covariates as needed
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(vd_race)
+
+#view summary stats for selected model
+summary(vd_race)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(vd_race)
+shapiro.test(vd_race$residuals) #assess normality of residuals
+
+
+```
+
+# table for model output
+
+```{r}
+library(stargazer)
+
+stargazer(vd_race, #***add more models here
+          type = "html",
+          out = "model_output.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Your title here")
+
+#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf
+
+
+```
