@@ -23,8 +23,7 @@ library(arsenal)
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
 data<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
 
-
-
+data_raw<-read.csv("AssessingGeneticCoun-ForDataAnalysis_DATA_2024-02-25_1458.csv")
 
 # ***May need to clean, convert, or recode variables - here's one example
 
