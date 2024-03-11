@@ -16,7 +16,6 @@ library(dplyr)
 library(readxl)
 library(tidyverse)
 library(ggplot2)
-library(dplyr)
 library(tidyverse)
 library(arsenal)
 
@@ -65,10 +64,15 @@ summary(tableby(tmp, data = desc,
 ```{r}
 # Recode institutional policies as 0 if it does not exist or not sure, NA if NA, and 1 if anything else
 data$policies_institutional_1a <- ifelse(data$institutional.level.policies.for.results.notes.release. %in% 
-                                           c("This DOES NOT exist", "I am not sure"), 0, ifelse(is.na(data$variable), NA, 1))
+                                           c("This DOES NOT exist", "I am not sure"), 0,
+                                         ifelse(is.na(data$institutional.level.policies.for.results.notes.release.), NA, 
+                                                                                                1))
 
-data$policies_dept_1a <- ifelse(data$department..division..or.workgroup.level.policies.for.results.notes.release. %in% 
-                                  c("This DOES NOT exist", "I am not sure"), 0, ifelse(is.na(data$variable), NA, 1))
+# Recode dept policies variable in raw dataset
+data_raw$policies_dept_1a <- ifelse(data_raw$policies_dept %in% c(4, 5), 0,
+                                 ifelse(data_raw$policies_dept == 6, NA,
+                                        ifelse(data_raw$policies_dept %in% c(1, 2, 3), 1, data_raw$policies_dept)
+                                       ))
 
 ```
 
@@ -148,8 +152,137 @@ qqline(data$workflow_total)
 
 ## Factor analysis for outcome variables
 
-## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
+### Perceived benefits
 
-## Bivariate analyses for GC involvement in policy – logistic and linear
+```{r}
+library(psych)
+library(corrplot)
+library(car)
+
+# subset perceived benefits variables
+ben<-data_raw%>%subset(select = c(pt_empower:pt_share)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
+
+# correlation matrix
+datamatrix<-cor(ben)
+corrplot::corrplot(datamatrix, method = "number")
+
+# analyze factorability of the data
+X<-ben
+
+#Kaiser-Meyer Olkin
+KMO(r=cor(X))
+
+#Bartlett's test of sphericity
+cortest.bartlett(X)
+det(cor(X))
+
+# scree plot
+library(ggplot2)
+fafitfree <- fa(ben,nfactors = ncol(X), rotate = "none")
+n_factors <- length(fafitfree$e.values)
+scree     <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+parallel<-fa.parallel(X)
+
+# 1 factor
+factanal_1 <- factanal(X, factors=1, scores = c("regression"), rotation = "varimax")
+print(factanal_1)
+
+# 2 factors
+factanal_2 <- factanal(X, factors=2, scores = c("regression"), rotation = "varimax")
+print(factanal_2)
+
+# check internal consistency of benefits variables (Cronbach's alpha)
+
+# correlation matrix
+datamatrix<-cor(ben)
+corrplot::corrplot(datamatrix, method = "number")
+
+# Cronbach's alpha, allowing negatively correlated items to be reversed
+psych::alpha(X, check.keys = TRUE)
+
+# create benefits score
+data_raw$benefits <- rowSums(data_raw[,c("pt_empower", "pt_processing", "pt_assurance", "pt_action", "pt_share")], na.rm = TRUE)
+
+
+```
+### Do the same for perceived harms and perceived impact on workflow
+
+
+
+## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
+```{r, results='asis'}
+# to do this one at a time:
+table(data$policies_dept_1a, data$are.empowered.due.to.direct.access.to.their.medical.records., useNA = "always")
+
+
+# to do a summary table for departmental/workgroup policies
+
+# select the relevant variables
+desc<-data%>%
+  select(policies_dept_1a, are.empowered.due.to.direct.access.to.their.medical.records.) # ***add more outcome variables
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_dept_1a", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+
+
+## Bivariate analyses for GC involvement in policy – logistic and linear (similar to previous chunk)
+
+
 
 ## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
+
+```{r}
+#subset the variables that you are considering using in the model ***change these as needed - maybe add workplace setting, years of training, etc.
+tmp<- subset(data_raw, select = c("benefits", "policies_dept_1a", "ordering_provider", "position"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(benefits ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(benefits~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed
+ben1a<-lm(benefits~ policies_dept_1a + ordering_provider + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(ben1a)
+
+#view summary stats for selected model
+summary(ben1a)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(ben1a)
+shapiro.test(ben1a$residuals) #assess normality of residuals
+```
+
+
