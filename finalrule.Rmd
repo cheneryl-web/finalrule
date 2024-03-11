@@ -220,15 +220,14 @@ data_raw$benefits <- rowSums(data_raw[,c("pt_empower", "pt_processing", "pt_assu
 
 ## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
 ```{r, results='asis'}
-# to do this one at a time:
-table(data$policies_dept_1a, data$are.empowered.due.to.direct.access.to.their.medical.records., useNA = "always")
-
-
 # to do a summary table for departmental/workgroup policies
 
 # select the relevant variables
-desc<-data%>%
-  select(policies_dept_1a, are.empowered.due.to.direct.access.to.their.medical.records.) # ***add more outcome variables
+desc<-data_raw%>%
+  select(policies_dept_1a, pt_empower) # ***add more outcome variables
+
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+desc$pt_empower<-as.factor(desc$pt_empower)
 
 # variable labels
 labels(desc)<-labs
