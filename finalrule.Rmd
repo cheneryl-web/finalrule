@@ -62,89 +62,117 @@ summary(tableby(tmp, data = desc,
 ```
 # recode variables for workplace policies variable - analysis 1a (presence vs. absence of the policy)
 ```{r}
-# Recode institutional policies as 0 if it does not exist or not sure, NA if NA, and 1 if anything else
-data$policies_institutional_1a <- ifelse(data$institutional.level.policies.for.results.notes.release. %in% 
-                                           c("This DOES NOT exist", "I am not sure"), 0,
-                                         ifelse(is.na(data$institutional.level.policies.for.results.notes.release.), NA, 
-                                                                                                1))
+#Analysis 1a: The existence of direct contact, institutional policies, 
+#dept/division/workgroup policies, blocking policies, and changes to pt portal 
+#policies are associated with less perceived disruption to workflow, less 
+#perceived pt harms, and more perceived pt benefits.
 
-# Recode dept policies variable in raw dataset
-data_raw$policies_dept_1a <- ifelse(data_raw$policies_dept %in% c(4, 5), 0,
-                                 ifelse(data_raw$policies_dept == 6, NA,
-                                        ifelse(data_raw$policies_dept %in% c(1, 2, 3), 1, data_raw$policies_dept)
-                                       ))
+# Recode policies as 0 if it does not exist or not sure, NA if NA, and 1 if anything else
+policies_dept_1a <- ifelse(is.element(data$policies_dept, notexist),0,
+                           (ifelse(is.element(data$policies_dept,na),NA,1)))
+
+policies_institutional_1a <- ifelse(is.element(data$policies_instituitional, notexist),0,
+                                    (ifelse(is.element(data$policies_instituitional,na),NA,1)))
+
+policies_portal_1a <- ifelse(is.element(data$policies_portal, notexist),0,
+                             (ifelse(is.element(data$policies_portal,na),NA,1)))
 
 ```
 
 
 # recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
 ```{r}
-#***adapt from the previous coding chunk
+#Analysis1b: The involvement of GCs in these policies is associated with less 
+#perceived disruption to workflow, less perceived pt harms, and more perceived 
+#pt benefits.
+
+# recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
+policies_dept_1b <- ifelse(is.element(data$policies_dept, notexist),0,
+                           (ifelse(is.element(data$policies_dept,na),NA,
+                                   (ifelse(is.element(data$policies_dept,GCnot),1,2)))))
+
+policies_institutional_1b <- ifelse(is.element(data$policies_instituitional, notexist),0,
+                                    (ifelse(is.element(data$policies_instituitional,na),NA,
+                                            (ifelse(is.element(data$policies_instituitional,GCnot),1,2)))))
+
+policies_portal_1b <- ifelse(is.element(data$policies_portal, notexist),0,
+                             (ifelse(is.element(data$policies_portal,na),NA,
+                                     (ifelse(is.element(data$policies_portal,GCnot),1,2)))))
 ```
 
 
 # recode variables for outcomes (harms, benefits, and workflow impact)
 ```{r}
-# Create a vector of variable names
-var.names <- c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently.") #add more variable names
+#perceived harms
+pt_reaction_RC <- recode(data$pt_reaction,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                         "1" = 1,"6" = NA_real_)
+pt_understand_RC <- recode(data$pt_understand,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                         "1" = 1,"6" = NA_real_)
+pt_contact_RC <- recode(data$pt_contact,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
 
-# Loop over the variables
-for (var in var.names) {
+df_harms <- data.frame(pt_reaction_RC,pt_understand_RC,pt_contact_RC)
+sums_harms <- (rowSums(df_harms))/3
+summary(sums_harms)
 
-  # Create a new variable name with the suffix '_rc'
-  new.var <- paste(var, "rc", sep = "_")
 
-  # Apply recode and create a new variable in data
-  data[[new.var]] <- recode(data[[var]], 
-                            "Strongly agree" = 5, 
-                            "Agree" = 4, 
-                            "Neither agree nor disagree" = 3, 
-                            "Disagree" = 2, 
-                            "Strongly disagree" = 1,
-                            "Not applicable for my position" = NA_real_)
-}
+#perceived benefits
+pt_empower_RC <- recode(data$pt_empower,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
+pt_processing_RC <- recode(data$pt_processing,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
+pt_assurance_RC <- recode(data$pt_assurance,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
+pt_action_RC <- recode(data$pt_action,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
+pt_share_RC <- recode(data$pt_share,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                           "1" = 1,"6" = NA_real_)
 
-# ***Here's some sample code to reverse-code a variable (e.g., for sending results variable) - may need to modify variable names: 
-# data$sending_results_rc <- recode(data$sending_results, `5` = 1, `4` = 2, `3` = 3, `2` = 4, `1` = 5, .default = NA_real_)
+df_benefits <- data.frame(pt_empower_RC,pt_processing_RC,pt_assurance_RC,pt_action_RC,pt_share_RC)
+sums_benefits <- (rowSums(df_benefits))/5
+summary(sums_benefits)
+
+#workplace effects
+checking_RC <- recode(data$checking,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                        "1" = 1,"6" = NA_real_)
+timing_RC <- recode(data$timing,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                      "1" = 1,"6" = NA_real_)
+communications_RC <- recode(data$communications,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                      "1" = 1,"6" = NA_real_)
+change_RC <- recode(data$change,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                      "1" = 1,"6" = NA_real_)
+coordination_dept_RC <- recode(data$coordination_dept,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                    "1" = 1,"6" = NA_real_)
+coordination_other_RC <- recode(data$coordination_other,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
+                    "1" = 1,"6" = NA_real_)
+sending_results_RC <- recode(data$sending_results,"5" = 1, "4" = 2, "3" = 3, "2" = 4, 
+                    "1" = 5,"6" = NA_real_)
 
 ```
 
 
-# total the items for each outcome category
-```{r}
-# WORKFLOW
-# define columns to sum for workflow category
-cols_to_sum <-c("need.to.check.the.electronic.medical.record.and.or.my.email.more.frequently._rc") #***add the rest of the workflow variables
 
-# create a new column for the summed columns
-data$workflow_total <- rowSums(data[cols_to_sum], na.rm = TRUE)
-
-
-# *** similar process for benefits and risks variables
-
-```
 
 
 # explore the distribution for numerical variables (workflow variables, in this example)
 ```{r}
-#histogram
-hist(data$workflow_total)
+df_workplace <- data.frame(checking_RC,timing_RC,communications_RC,change_RC,coordination_dept_RC, coordination_other_RC,sending_results_RC)
+sums_workplace <- (rowSums(df_workplace)/7)
+summary(sums_workplace)
 
-#summary stats
-summary(data$workflow_total)
+#sums
+summary(sums_benefits)
+summary(sums_harms)
+summary(sums_workplace)
 
-#boxplot
-boxplot(data$workflow_total)
+hist(sums_benefits)
+hist(sums_harms)
+hist(sums_workplace)
 
-#boxplot to compare public hospital/FQHC vs. other
-boxplot(data$workflow_total ~ data$In.what.setting.s..do.you.currently.work...select.all.that.apply...choice.Hospital.Medical.Facility..Public.or.Community.Based.Hospital..including.FQHC..)
-
-#Shapiro-Wilk test for normality
-shapiro.test(data$workflow_total)
-
-#QQ plot vs. normal
-qqnorm(data$workflow_total)
-qqline(data$workflow_total)
+# create multiple histogram
+hist(sums_harms, col='red', xlim=c(1, 5))
+hist(sums_benefits, col='green', add=TRUE)
+hist(sums_workplace, col='blue', add=TRUE)
 
 ```
 
