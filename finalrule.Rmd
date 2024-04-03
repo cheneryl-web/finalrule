@@ -18,11 +18,14 @@ library(tidyverse)
 library(ggplot2)
 library(tidyverse)
 library(arsenal)
+library(psych)
+library(corrplot)
+library(car)
 
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
-data<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
+data_labels<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
 
-data_raw<-read.csv("AssessingGeneticCoun-ForDataAnalysis_DATA_2024-02-25_1458.csv")
+data<-read.csv("AssessingGeneticCoun-ForDataAnalysis_DATA_2024-02-25_1458.csv")
 
 # ***May need to clean, convert, or recode variables - here's one example
 
@@ -31,12 +34,88 @@ data_raw<-read.csv("AssessingGeneticCoun-ForDataAnalysis_DATA_2024-02-25_1458.cs
 levels <- c("1- 4 years", "5- 9 years", "10- 14 years", "15- 19 years", "20- 24 years", "25- 29 years")
 
 # Convert to an ordered factor
-data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. <- factor(data$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.., levels = levels, ordered = TRUE)
-
-
+data_labels$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. <- factor(data_labels$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.., levels = levels, ordered = TRUE)
 
 # set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
 labs<- c(What.is.your.age.in.years. = "Age")
+
+
+
+
+#Analysis 1a: The existence of direct contact, institutional policies, 
+#dept/division/workgroup policies, blocking policies, and changes to pt portal 
+#policies are associated with less perceived disruption to workflow, less 
+#perceived pt harms, and more perceived pt benefits.
+
+# Recode policies as 0 if it does not exist or not sure, NA if NA, and 1 if anything else
+data$policies_dept_1a <- ifelse(data$policies_dept %in% c(4, 5), 0,
+                                 ifelse(data$policies_dept == 6, NA,
+                                        ifelse(data$policies_dept %in% c(1, 2, 3), 1, data$policies_dept)
+                                       ))
+
+# Recoding the 'data$policies_institutional' variable
+data$policies_institutional_1a <- ifelse(data$policies_instituitional %in% c(4, 5), 0,
+                                  ifelse(data$policies_instituitional == 6, NA,
+                                         ifelse(data$policies_instituitional %in% c(1, 2, 3), 1, data$policies_instituitional)
+                                        ))
+
+# Recoding the 'data$policies_portal' variable
+data$policies_portal_1a <- ifelse(data$policies_portal %in% c(4, 5), 0,
+                                ifelse(data$policies_portal == 6, NA,
+                                       ifelse(data$policies_portal %in% c(1, 2, 3), 1, data$policies_portal)
+                                      ))
+
+
+#Analysis1b: The involvement of GCs in these policies is associated with less 
+#perceived disruption to workflow, less perceived pt harms, and more perceived 
+#pt benefits.
+# recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
+# Recoding policies_institutional
+data$policies_institutional_1b <- ifelse(data$policies_instituitional == 1, 2,
+                                  ifelse(data$policies_instituitional == 2, 1,
+                                         ifelse(data$policies_instituitional == 3, 1,
+                                                ifelse(data$policies_instituitional %in% c(4, 5), 0,
+                                                       ifelse(data$policies_instituitional == 6, NA, data$policies_institutional)
+                                                      ))))
+
+# Recoding policies_dept
+data$policies_dept_1b <- ifelse(data$policies_dept == 1, 2,
+                          ifelse(data$policies_dept == 2, 1,
+                                 ifelse(data$policies_dept == 3, 1,
+                                       ifelse(data$policies_dept %in% c(4, 5), 0,
+                                              ifelse(data$policies_dept == 6, NA, data$policies_dept)
+                                             ))))
+
+# Recoding policies_portal
+data$policies_portal_1b <- ifelse(data$policies_portal == 1, 2,
+                            ifelse(data$policies_portal == 2, 1,
+                                   ifelse(data$policies_portal == 3, 1,
+                                         ifelse(data$policies_portal %in% c(4, 5), 0,
+                                                ifelse(data$policies_portal == 6, NA, data$policies_portal)
+                                               ))))
+
+
+#perceived harms
+data$pt_reaction <- ifelse(data$pt_reaction == 6, NA, data$pt_reaction)
+data$pt_understand <- ifelse(data$pt_understand == 6, NA, data$pt_understand)
+data$pt_contact <- ifelse(data$pt_contact == 6, NA, data$pt_contact)
+
+
+#perceived benefits
+data$pt_empower <- ifelse(data$pt_empower == 6, NA, data$pt_empower)
+data$pt_processing <- ifelse(data$pt_processing == 6, NA, data$pt_processing)
+data$pt_assurance <- ifelse(data$pt_assurance == 6, NA, data$pt_assurance)
+data$pt_action <- ifelse(data$pt_action == 6, NA, data$pt_action)
+data$pt_share <- ifelse(data$pt_share == 6, NA, data$pt_share)
+
+#workplace effects
+data$checking <- ifelse(data$checking == 6, NA, data$checking)
+data$timing <- ifelse(data$timing == 6, NA, data$timing)
+data$communications <- ifelse(data$communications == 6, NA, data$communications)
+data$change <- ifelse(data$change == 6, NA, data$change)
+data$coordination_dept <- ifelse(data$coordination_dept == 6, NA, data$coordination_dept)
+data$coordination_other <- ifelse(data$coordination_other == 6, NA, data$coordination_other)
+data$sending_results <- ifelse(data$sending_results == 6, NA, data$sending_results)
 
 ```
 
@@ -60,99 +139,6 @@ summary(tableby(tmp, data = desc,
 
 
 ```
-# recode variables for workplace policies variable - analysis 1a (presence vs. absence of the policy)
-```{r}
-#Analysis 1a: The existence of direct contact, institutional policies, 
-#dept/division/workgroup policies, blocking policies, and changes to pt portal 
-#policies are associated with less perceived disruption to workflow, less 
-#perceived pt harms, and more perceived pt benefits.
-
-# Recode policies as 0 if it does not exist or not sure, NA if NA, and 1 if anything else
-policies_dept_1a <- ifelse(is.element(data$policies_dept, notexist),0,
-                           (ifelse(is.element(data$policies_dept,na),NA,1)))
-
-policies_institutional_1a <- ifelse(is.element(data$policies_instituitional, notexist),0,
-                                    (ifelse(is.element(data$policies_instituitional,na),NA,1)))
-
-policies_portal_1a <- ifelse(is.element(data$policies_portal, notexist),0,
-                             (ifelse(is.element(data$policies_portal,na),NA,1)))
-
-```
-
-
-# recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
-```{r}
-#Analysis1b: The involvement of GCs in these policies is associated with less 
-#perceived disruption to workflow, less perceived pt harms, and more perceived 
-#pt benefits.
-
-# recode variables for analysis 1b (GC involved in policy vs. not involved vs. no known policy)
-policies_dept_1b <- ifelse(is.element(data$policies_dept, notexist),0,
-                           (ifelse(is.element(data$policies_dept,na),NA,
-                                   (ifelse(is.element(data$policies_dept,GCnot),1,2)))))
-
-policies_institutional_1b <- ifelse(is.element(data$policies_instituitional, notexist),0,
-                                    (ifelse(is.element(data$policies_instituitional,na),NA,
-                                            (ifelse(is.element(data$policies_instituitional,GCnot),1,2)))))
-
-policies_portal_1b <- ifelse(is.element(data$policies_portal, notexist),0,
-                             (ifelse(is.element(data$policies_portal,na),NA,
-                                     (ifelse(is.element(data$policies_portal,GCnot),1,2)))))
-```
-
-
-# recode variables for outcomes (harms, benefits, and workflow impact)
-```{r}
-#perceived harms
-pt_reaction_RC <- recode(data$pt_reaction,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                         "1" = 1,"6" = NA_real_)
-pt_understand_RC <- recode(data$pt_understand,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                         "1" = 1,"6" = NA_real_)
-pt_contact_RC <- recode(data$pt_contact,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-
-df_harms <- data.frame(pt_reaction_RC,pt_understand_RC,pt_contact_RC)
-sums_harms <- (rowSums(df_harms))/3
-summary(sums_harms)
-
-
-#perceived benefits
-pt_empower_RC <- recode(data$pt_empower,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-pt_processing_RC <- recode(data$pt_processing,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-pt_assurance_RC <- recode(data$pt_assurance,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-pt_action_RC <- recode(data$pt_action,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-pt_share_RC <- recode(data$pt_share,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                           "1" = 1,"6" = NA_real_)
-
-df_benefits <- data.frame(pt_empower_RC,pt_processing_RC,pt_assurance_RC,pt_action_RC,pt_share_RC)
-sums_benefits <- (rowSums(df_benefits))/5
-summary(sums_benefits)
-
-#workplace effects
-checking_RC <- recode(data$checking,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                        "1" = 1,"6" = NA_real_)
-timing_RC <- recode(data$timing,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                      "1" = 1,"6" = NA_real_)
-communications_RC <- recode(data$communications,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                      "1" = 1,"6" = NA_real_)
-change_RC <- recode(data$change,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                      "1" = 1,"6" = NA_real_)
-coordination_dept_RC <- recode(data$coordination_dept,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                    "1" = 1,"6" = NA_real_)
-coordination_other_RC <- recode(data$coordination_other,"5" = 5, "4" = 4, "3" = 3, "2" = 2, 
-                    "1" = 1,"6" = NA_real_)
-sending_results_RC <- recode(data$sending_results,"5" = 1, "4" = 2, "3" = 3, "2" = 4, 
-                    "1" = 5,"6" = NA_real_)
-
-```
-
-
-
-
 
 # explore the distribution for numerical variables (workflow variables, in this example)
 ```{r}
@@ -183,12 +169,8 @@ hist(sums_workplace, col='blue', add=TRUE)
 ### Perceived benefits
 
 ```{r}
-library(psych)
-library(corrplot)
-library(car)
-
 # subset perceived benefits variables
-ben<-data_raw%>%subset(select = c(pt_empower:pt_share)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
+ben<-data%>%subset(select = c(pt_empower:pt_share)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
 
 # correlation matrix
 datamatrix<-cor(ben)
@@ -238,10 +220,63 @@ corrplot::corrplot(datamatrix, method = "number")
 psych::alpha(X, check.keys = TRUE)
 
 # create benefits score
-data_raw$benefits <- rowSums(data_raw[,c("pt_empower", "pt_processing", "pt_assurance", "pt_action", "pt_share")], na.rm = TRUE)
+data$benefits <- rowSums(data[,c("pt_empower", "pt_processing", "pt_assurance", "pt_action", "pt_share")], na.rm = TRUE)
 
 
 ```
+### Perceived harms
+```{r}
+# subset perceived harms variables
+harm<-data%>%subset(select = c(pt_reaction_RC:pt_contact_RC)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
+
+# correlation matrix
+datamatrix<-cor(harm)
+corrplot::corrplot(datamatrix, method = "number")
+
+# analyze factorability of the data
+X<-harm
+
+#Kaiser-Meyer Olkin
+KMO(r=cor(X))
+
+#Bartlett's test of sphericity
+cortest.bartlett(X)
+det(cor(X))
+
+# scree plot
+library(ggplot2)
+fafitfree <- fa(harm,nfactors = ncol(X), rotate = "none")
+n_factors <- length(fafitfree$e.values)
+scree     <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+parallel<-fa.parallel(X)
+
+# 1 factor
+factanal_1 <- factanal(X, factors=1, scores = c("regression"), rotation = "varimax")
+print(factanal_1)
+
+# check internal consistency of variables (Cronbach's alpha)
+
+# correlation matrix
+datamatrix<-cor(harm)
+corrplot::corrplot(datamatrix, method = "number")
+
+# Cronbach's alpha, allowing negatively correlated items to be reversed
+psych::alpha(X, check.keys = TRUE)
+
+# create harms score
+data_raw$harms <- rowSums(data_raw[,c("pt_reaction_RC")], na.rm = TRUE)
+
+```
+
 ### Do the same for perceived harms and perceived impact on workflow
 
 
