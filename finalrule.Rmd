@@ -39,9 +39,6 @@ data_labels$How.many.years.experience.do.you.have.as.a.practicing.genetic.counse
 # set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
 labs<- c(What.is.your.age.in.years. = "Age")
 
-
-
-
 #Analysis 1a: The existence of direct contact, institutional policies, 
 #dept/division/workgroup policies, blocking policies, and changes to pt portal 
 #policies are associated with less perceived disruption to workflow, less 
@@ -140,37 +137,17 @@ summary(tableby(tmp, data = desc,
 
 ```
 
-# explore the distribution for numerical variables (workflow variables, in this example)
-```{r}
-df_workplace <- data.frame(checking_RC,timing_RC,communications_RC,change_RC,coordination_dept_RC, coordination_other_RC,sending_results_RC)
-sums_workplace <- (rowSums(df_workplace)/7)
-summary(sums_workplace)
-
-#sums
-summary(sums_benefits)
-summary(sums_harms)
-summary(sums_workplace)
-
-hist(sums_benefits)
-hist(sums_harms)
-hist(sums_workplace)
-
-# create multiple histogram
-hist(sums_harms, col='red', xlim=c(1, 5))
-hist(sums_benefits, col='green', add=TRUE)
-hist(sums_workplace, col='blue', add=TRUE)
-
-```
-
-# To-do next:
-
 ## Factor analysis for outcome variables
 
 ### Perceived benefits
-
 ```{r}
 # subset perceived benefits variables
-ben<-data%>%subset(select = c(pt_empower:pt_share)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
+ben <- data %>%
+  select(pt_empower:pt_share) %>%
+  mutate_all(as.numeric)
+
+# Now omit NA values
+ben <- na.omit(ben)
 
 # correlation matrix
 datamatrix<-cor(ben)
@@ -227,7 +204,12 @@ data$benefits <- rowSums(data[,c("pt_empower", "pt_processing", "pt_assurance", 
 ### Perceived harms
 ```{r}
 # subset perceived harms variables
-harm<-data%>%subset(select = c(pt_reaction_RC:pt_contact_RC)) %>% mutate_all(as.numeric) %>% mutate_all(na.omit)
+harm <- data %>%
+  select(pt_reaction:pt_contact) %>%
+  mutate_all(as.numeric)
+
+# Omit NA values
+harm <- na.omit(harm)
 
 # correlation matrix
 datamatrix<-cor(harm)
@@ -273,20 +255,78 @@ corrplot::corrplot(datamatrix, method = "number")
 psych::alpha(X, check.keys = TRUE)
 
 # create harms score
-data_raw$harms <- rowSums(data_raw[,c("pt_reaction_RC")], na.rm = TRUE)
+data$harms <- rowSums(data[,c("pt_reaction", "pt_understand", "pt_contact")], na.rm = TRUE)
 
 ```
 
-### Do the same for perceived harms and perceived impact on workflow
+### Perceived impact on workflow
+```{r}
+# subset perceived workflow impact variables
+work <- data %>%
+  select(checking:coordination_other) %>%
+  mutate_all(as.numeric)
 
+# Omit NA values
+work <- na.omit(work)
 
+# correlation matrix
+datamatrix<-cor(work)
+corrplot::corrplot(datamatrix, method = "number")
+
+# analyze factorability of the data
+X<-work
+
+#Kaiser-Meyer Olkin
+KMO(r=cor(X))
+
+#Bartlett's test of sphericity
+cortest.bartlett(X)
+det(cor(X))
+
+# scree plot
+library(ggplot2)
+fafitfree <- fa(work,nfactors = ncol(X), rotate = "none")
+n_factors <- length(fafitfree$e.values)
+scree     <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+parallel<-fa.parallel(X)
+
+# 1 factor
+factanal_1 <- factanal(X, factors=1, scores = c("regression"), rotation = "varimax")
+print(factanal_1)
+
+# 2 factors
+factanal_2 <- factanal(X, factors=2, scores = c("regression"), rotation = "varimax")
+print(factanal_2)
+
+# check internal consistency of variables (Cronbach's alpha)
+
+# correlation matrix
+datamatrix<-cor(work)
+corrplot::corrplot(datamatrix, method = "number")
+
+# Cronbach's alpha, allowing negatively correlated items to be reversed
+psych::alpha(X, check.keys = TRUE)
+
+# create workflow impact score - dropping last item
+data$work <- rowSums(data[,c("checking", "timing", "communications", "change", "coordination_dept", "coordination_other")], na.rm = TRUE)
+
+```
 
 ## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
 ```{r, results='asis'}
 # to do a summary table for departmental/workgroup policies
 
 # select the relevant variables
-desc<-data_raw%>%
+desc<-data%>%
   select(policies_dept_1a, pt_empower) # ***add more outcome variables
 
 #convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
@@ -314,7 +354,7 @@ summary(tableby(tmp, data = desc,
 
 ```{r}
 #subset the variables that you are considering using in the model ***change these as needed - maybe add workplace setting, years of training, etc.
-tmp<- subset(data_raw, select = c("benefits", "policies_dept_1a", "ordering_provider", "position"))
+tmp<- subset(data, select = c("benefits", "policies_dept_1a", "ordering_provider", "position"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
