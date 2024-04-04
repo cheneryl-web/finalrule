@@ -21,23 +21,12 @@ library(arsenal)
 library(psych)
 library(corrplot)
 library(car)
+library(stargazer)
 
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
 data_labels<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
 
 data<-read.csv("AssessingGeneticCoun-ForDataAnalysis_DATA_2024-02-25_1458.csv")
-
-# ***May need to clean, convert, or recode variables - here's one example
-
-# convert years experience as ordered factor variable
-# Create a vector of levels in correct order
-levels <- c("1- 4 years", "5- 9 years", "10- 14 years", "15- 19 years", "20- 24 years", "25- 29 years")
-
-# Convert to an ordered factor
-data_labels$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.. <- factor(data_labels$How.many.years.experience.do.you.have.as.a.practicing.genetic.counselor..round.to.the.nearest.year.., levels = levels, ordered = TRUE)
-
-# set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
-labs<- c(What.is.your.age.in.years. = "Age")
 
 #Analysis 1a: The existence of direct contact, institutional policies, 
 #dept/division/workgroup policies, blocking policies, and changes to pt portal 
@@ -117,8 +106,47 @@ data$sending_results <- ifelse(data$sending_results == 6, NA, data$sending_resul
 
 # DEMOGRAPHIC VARIABLES
 
-#clean workplace setting variable
+# years of GC experience as ordered factor variable
+data$demo_years <- factor(data$demo_years, levels = 1:8, ordered = TRUE)
 
+# age as ordered factor variable
+data$demo_age <- factor(data$demo_age, levels = 1:11, ordered = TRUE)
+
+# position as ordered factor
+data$position <- factor(data$position, 
+                                 levels = 1:3, 
+                                 labels = c("Direct patient care",
+                                            "Non-direct patient care",
+                                            "Mixed position"))
+
+# ordering provider
+data$ordering_provider <- factor(data$ordering_provider, 
+                                 levels = 1:4, 
+                                 labels = c("Yes. I place and sign orders as the provider of record",
+                                            "No. I place the order but am not listed as the ordering provider",
+                                            "No. I cannot place or sign orders",
+                                            "No. I do not order in my role"))
+
+# region
+data$demo_list <- factor(data$demo_list, 
+                                 levels = 1:6, 
+                                 labels = c("Region 1 (CT, MA, ME, NH, RI, VT, CNMaritime Provinces)",
+                                            "Region 2 (DC, DE, MD, NJ, NY, PA, VA, WV,PR, VI, Quebec)",
+                                            "Region 3 (AL, FL, GA, KY, LA, MS, NC, SC,TN)",
+                                            "Region 4 (AR, IA, IL, IN, KS, MI, MN, MO,ND, NE, OH, OK, SD, WI, Ontario)",
+                                            "Region 5 (AZ, CO, MT, NM, TX, UT, WY, Alberta, Manitoba, Sask.)",
+                                            "Region 6 (AK, CA, HI, ID, NV, OR, WA, British Columbia)"))
+
+
+# convert race/ethnicity variables to factor
+for (i in 1:8) {
+  var_name <- paste0("demo_raceethnicity___", i)
+  data[[var_name]] <- factor(data[[var_name]], 
+                             levels = 0:1, 
+                             labels = c("NA", "1"))
+}
+
+#clean workplace setting variable
 workplace_labels <- list(
   "Government organization or agency",
   "Hospital/Medical Facility- Academic Medical Center",
@@ -158,13 +186,19 @@ data$workplace_multiple <- apply(workplace_matrix, 1, function(x) {
 })
 
 
+# set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
+labs<- c(demo_age = "Age",
+         demo_list = "Region",
+         demo_years = "Years of experience as a practicing GC"
+)
+
 ```
 
 # Summary table
 ```{r, results='asis'}
 # select the relevant variables
 desc<-data%>%
-  select(What.is.your.age.in.years.) # ***add more demographic variables
+  select(position, demo_years, workplacesetting, ordering_provider, demo_list, demo_raceethnicity___1:demo_raceethnicity___8, demo_gender___1:demo_gender___7, demo_age) # ***add more demographic variables if needed
 
 # variable labels
 labels(desc)<-labs
@@ -396,9 +430,10 @@ summary(tableby(tmp, data = desc,
 
 ## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
 
+### b1a1: Does existence of department policies influence perceived benefits?
 ```{r}
-#subset the variables that you are considering using in the model ***change these as needed - maybe add workplace setting, years of training, etc.
-tmp<- subset(data, select = c("benefits", "policies_dept_1a", "ordering_provider", "position"))
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data, select = c("benefits", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -415,20 +450,43 @@ both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
 #view covariates selected by stepwise selection
 both$coefficients
 
-#fit model using these variables ***change these as needed
-ben1a<-lm(benefits~ policies_dept_1a + ordering_provider + position, data = tmp)
+#fit model using these variables ***change these as needed - only position was selected in this case
+b1a1<-lm(benefits~ policies_dept_1a + position, data = tmp)
 
 #check for multicollinearity - calculate variance-inflation factor
-car::vif(ben1a)
+car::vif(b1a1)
 
 #view summary stats for selected model
-summary(ben1a)
+summary(b1a1)
 
 #assess normality
 #regression diagnostics
 library(ggfortify)
-autoplot(ben1a)
-shapiro.test(ben1a$residuals) #assess normality of residuals
+autoplot(b1a1)
+shapiro.test(b1a1$residuals) #assess normality of residuals
 ```
 
+### b1a2 Does existence of institutional policies influence perceived benefits?
+
+### b1a3 Does existence of portal policies influence perceived benefits?
+
+### h1a1 Does existence of department policies influence perceived harms?
+
+### h1a2 Does existence of institutional policies influence perceived harms?
+
+### h1a3 Does existence of portal policies influence perceived harms?
+
+
+# create regression table
+```{r}
+stargazer(b1a1, #***add more models here - e.g., b1a2, b1a3
+          type = "html",
+          out = "benefits_1a.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Effects of deparmental, institutional, and portal policies on perceived benefits")
+
+#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf
+
+```
 
