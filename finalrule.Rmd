@@ -114,6 +114,50 @@ data$coordination_dept <- ifelse(data$coordination_dept == 6, NA, data$coordinat
 data$coordination_other <- ifelse(data$coordination_other == 6, NA, data$coordination_other)
 data$sending_results <- ifelse(data$sending_results == 6, NA, data$sending_results)
 
+
+# DEMOGRAPHIC VARIABLES
+
+#clean workplace setting variable
+
+workplace_labels <- list(
+  "Government organization or agency",
+  "Hospital/Medical Facility- Academic Medical Center",
+  "Hospital/Medical Facility- Public or Community Based Hospital (including FQHC)",
+  "Hospital/Medical Facility- Private",
+  "Insurance Company/Benefit Management Company",
+  "Laboratory Commercial",
+  "Not-For-Profit Organization (non-hospital)",
+  "Private Practice",
+  "Private Company-Biotechnology/ Research development, Digital Health/Software, Pharmaceutical",
+  "Other")
+
+# Create a matrix for the workplacesettings
+workplace_matrix <- data.frame(data[ , grepl("^workplacesetting___", names(data))])
+
+
+# Create the workplacesetting variable following your requirements
+data$workplacesetting <- apply(workplace_matrix, 1, function(x) {
+  indices <- which(x == 1)
+  if(length(indices) > 1) {
+    return("Multiple")
+  } else if(length(indices) == 1) {
+    return(workplace_labels[[indices]])
+  } else {
+    return("None")
+  }
+})
+
+# Create the workplace_multiple variable
+data$workplace_multiple <- apply(workplace_matrix, 1, function(x) {
+  indices <- which(x == 1)
+  if(length(indices) > 1) {
+    return(paste(workplace_labels[indices], collapse = ","))
+  } else {
+    return(NA)
+  }
+})
+
+
 ```
 
 # Summary table
