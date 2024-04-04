@@ -194,11 +194,11 @@ labs<- c(demo_age = "Age",
 
 ```
 
-# Summary table
+## Summary table
 ```{r, results='asis'}
 # select the relevant variables
 desc<-data%>%
-  select(position, demo_years, workplacesetting, ordering_provider, demo_list, demo_raceethnicity___1:demo_raceethnicity___8, demo_gender___1:demo_gender___7, demo_age) # ***add more demographic variables if needed
+  select(position, demo_years, workplacesetting, ordering_provider, demo_list, demo_raceethnicity___1:demo_raceethnicity___8, demo_age) # ***add more demographic variables if needed
 
 # variable labels
 labels(desc)<-labs
@@ -430,7 +430,7 @@ summary(tableby(tmp, data = desc,
 
 ## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
 
-### b1a1: Does existence of department policies influence perceived benefits?
+### Example b1a1: Does existence of department policies influence perceived benefits?
 ```{r}
 #subset the variables that you are considering using in the model ***change these if needed
 tmp<- subset(data, select = c("benefits", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
@@ -467,6 +467,12 @@ shapiro.test(b1a1$residuals) #assess normality of residuals
 ```
 
 ### b1a2 Does existence of institutional policies influence perceived benefits?
+
+```{r}
+#*** WRITE CODE HERE - use the previous code as a template using "policies_institutional_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
+
+```
+
 
 ### b1a3 Does existence of portal policies influence perceived benefits?
 
