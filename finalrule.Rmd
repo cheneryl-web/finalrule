@@ -430,10 +430,18 @@ summary(tableby(tmp, data = desc,
 
 ## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
 
-### Example b1a1: Does existence of department policies influence perceived benefits?
 ```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("benefits", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+# drop 3 outliers: 78, 80, 98
+data_d <- data[-c(78, 80, 98), ]
+
+```
+
+## benefits
+
+### b1a1: Does existence of department policies influence perceived benefits?
+```{r}
+#subset the variables that you are considering using in the model
+tmp<- subset(data_d, select = c("benefits", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -450,7 +458,7 @@ both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
 #view covariates selected by stepwise selection
 both$coefficients
 
-#fit model using these variables ***change these as needed - only position was selected in this case
+#fit model using these variables
 b1a1<-lm(benefits~ policies_dept_1a + position, data = tmp)
 
 #check for multicollinearity - calculate variance-inflation factor
@@ -469,10 +477,8 @@ shapiro.test(b1a1$residuals) #assess normality of residuals
 ### b1a2 Does existence of institutional policies influence perceived benefits?
 
 ```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_institutional_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("benefits", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d, select = c("benefits", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -509,10 +515,8 @@ shapiro.test(b1a2$residuals) #assess normality of residuals
 
 ### b1a3 Does existence of portal policies influence perceived benefits?
 ```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_portal_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("benefits", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d, select = c("benefits", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -545,12 +549,15 @@ autoplot(b1a3)
 shapiro.test(b1a3$residuals) #assess normality of residuals
 
 ```
+
+## harms
+
 ### h1a1 Does existence of department policies influence perceived harms?
 ```{r}
 #*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
 
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("harms", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d, select = c("harms", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -585,10 +592,8 @@ shapiro.test(h1a1$residuals) #assess normality of residuals
 ```
 ### h1a2 Does existence of institutional policies influence perceived harms?
 ```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("harms", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d, select = c("harms", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -621,12 +626,13 @@ autoplot(h1a2)
 shapiro.test(h1a2$residuals) #assess normality of residuals
 
 ```
+
 ### h1a3 Does existence of portal policies influence perceived harms?
 ```{r}
 #*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
 
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("harms", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d, select = c("harms", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -660,7 +666,118 @@ shapiro.test(h1a3$residuals) #assess normality of residuals
 
 ```
 
-## workflow impact
+# workflow impact
+
+### w1a1
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data, select = c("work", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1a1<-lm(work~ policies_dept_1a + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1a1)
+
+#view summary stats for selected model
+summary(w1a1)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1a1)
+shapiro.test(w1a1$residuals) #assess normality of residuals
+
+```
+
+### w1a2
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data, select = c("work", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1a2<-lm(work~ policies_institutional_1a + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1a2)
+
+#view summary stats for selected model
+summary(w1a2)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1a2)
+shapiro.test(w1a2$residuals) #assess normality of residuals
+
+```
+### w1a3
+
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("work", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1a3<-lm(work~ policies_portal_1a + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1a3)
+
+#view summary stats for selected model
+summary(w1a3)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1a3)
+shapiro.test(w1a3$residuals) #assess normality of residuals
+
+```
 
 
 
@@ -674,12 +791,19 @@ stargazer(b1a1, b1a2, b1a3,
           no.space = TRUE,
           title = "Effects of deparmental, institutional, and portal policies on perceived benefits")
 
-stargazer(h1a1, h1a2, h1a3,    #***add more models here - e.g., b1a2, b1a3
+stargazer(h1a1, h1a2, h1a3,
           type = "html",
           out = "harms_1a.doc", #output will be as a separate word document
           single.row = TRUE,
           no.space = TRUE,
           title = "Effects of deparmental, institutional, and portal policies on perceived harms")
+
+stargazer(w1a1, w1a2, w1a3,
+          type = "html",
+          out = "workflow_1a.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Effects of deparmental, institutional, and portal policies on perceived workflow impact")
 
 #*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://urldefense.com/v3/__https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf__;!!DaRZpAeNFA!ZuisxG4j1abrrrKI_q0F4G7osS-dcjwJrQXni8v0QxF1kb1CJZkYROoiqxQj9_DKpYLcEBmLvwTEP-ySAEMAdxWkrQ$ [cran[.]r-project[.]org]
 
