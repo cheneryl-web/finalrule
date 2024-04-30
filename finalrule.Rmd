@@ -80,6 +80,10 @@ data$policies_portal_1b <- ifelse(data$policies_portal == 1, 2,
                                                 ifelse(data$policies_portal == 6, NA, data$policies_portal)
                                                ))))
 
+# recode as factor
+data$policies_dept_1b <- as.factor(data$policies_dept_1b)
+data$policies_institutional_1b <- as.factor(data$policies_institutional_1b)
+data$policies_portal_1b <- as.factor(data$policies_portal_1b)
 
 #perceived harms
 data$pt_reaction <- ifelse(data$pt_reaction == 6, NA, data$pt_reaction)
@@ -136,6 +140,7 @@ data$demo_list <- factor(data$demo_list,
                                             "Region 4 (AR, IA, IL, IN, KS, MI, MN, MO,ND, NE, OH, OK, SD, WI, Ontario)",
                                             "Region 5 (AZ, CO, MT, NM, TX, UT, WY, Alberta, Manitoba, Sask.)",
                                             "Region 6 (AK, CA, HI, ID, NV, OR, WA, British Columbia)"))
+
 
 
 # convert race/ethnicity variables to factor
@@ -399,16 +404,16 @@ data$work <- rowSums(data[,c("checking", "timing", "communications", "change", "
 
 ```
 
-## Bivariate analyses for presence/absence of policy (how is each individual predictor related to each individual outcome and outcome categories) – logistic and linear
+## Bivariate analyses for presence/absence of dept policy (how is each individual predictor related to each individual outcome and outcome categories)
 ```{r, results='asis'}
 # to do a summary table for departmental/workgroup policies
 
 # select the relevant variables
 desc<-data%>%
-  select(policies_dept_1a, pt_empower) # ***add more outcome variables
+  select(policies_dept_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
 
 #convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-desc$pt_empower<-as.factor(desc$pt_empower)
+#desc$pt_empower<-as.factor(desc$pt_empower)
 
 # variable labels
 labels(desc)<-labs
@@ -423,9 +428,132 @@ summary(tableby(tmp, data = desc,
 
 ```
 
+## Bivariate analyses for presence/absence of institutional policy (how is each individual predictor related to each individual outcome and outcome categories)
+```{r, results='asis'}
+# to do a summary table for institutional policies
 
-## Bivariate analyses for GC involvement in policy – logistic and linear (similar to previous chunk)
+# select the relevant variables
+desc<-data%>%
+  select(policies_institutional_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
 
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+#desc$pt_empower<-as.factor(desc$pt_empower)
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_institutional_1a", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+
+
+## Bivariate analyses for presence/absence of portal policy (how is each individual predictor related to each individual outcome and outcome categories)
+```{r, results='asis'}
+# to do a summary table for portal policies
+
+# select the relevant variables
+desc<-data%>%
+  select(policies_portal_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+#desc$pt_empower<-as.factor(desc$pt_empower)
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_portal_1a", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+
+
+
+# 1b bivariate analyses
+
+
+## Bivariate analyses for GC involvement of dept policy (how is each individual predictor related to each individual outcome and outcome categories)
+```{r, results='asis'}
+# to do a summary table for departmental/workgroup policies
+
+# select the relevant variables
+desc<-data%>%
+  select(policies_dept_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+#desc$pt_empower<-as.factor(desc$pt_empower)
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_dept_1b", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+
+## Bivariate analyses for GC involvement of institutional policy (how is each individual predictor related to each individual outcome and outcome categories)
+```{r, results='asis'}
+# to do a summary table for institutional policies
+
+# select the relevant variables
+desc<-data%>%
+  select(policies_institutional_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+#desc$pt_empower<-as.factor(desc$pt_empower)
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_institutional_1b", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
+
+
+## Bivariate analyses for GC involvement of portal policy (how is each individual predictor related to each individual outcome and outcome categories)
+```{r, results='asis'}
+# to do a summary table for portal policies
+
+# select the relevant variables
+desc<-data%>%
+  select(policies_portal_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+
+#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
+#desc$pt_empower<-as.factor(desc$pt_empower)
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("policies_portal_1b", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L))
+
+
+```
 
 
 ## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
@@ -436,7 +564,7 @@ data_d <- data[-c(78, 80, 98), ]
 
 ```
 
-## benefits
+## benefits 1a
 
 ### b1a1: Does existence of department policies influence perceived benefits?
 ```{r}
@@ -550,7 +678,122 @@ shapiro.test(b1a3$residuals) #assess normality of residuals
 
 ```
 
-## harms
+## benefits 1b
+
+### b1b1: Does GC involvement in department policies influence perceived benefits?
+```{r}
+#subset the variables that you are considering using in the model
+tmp<- subset(data_d, select = c("benefits", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(benefits ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(benefits~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+b1b1<-lm(benefits~ policies_dept_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(b1b1)
+
+#view summary stats for selected model
+summary(b1b1)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(b1b1)
+shapiro.test(b1b1$residuals) #assess normality of residuals
+```
+
+### b1b2 Does GC involvement in institutional policies influence perceived benefits?
+
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("benefits", "policies_institutional_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(benefits ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(benefits~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed - only position was selected in this case
+b1b2<-lm(benefits~ policies_institutional_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(b1b2)
+
+#view summary stats for selected model
+summary(b1b2)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(b1b2)
+shapiro.test(b1b2$residuals) #assess normality of residuals
+
+```
+
+
+### b1b3 Does GC involvement in portal policies influence perceived benefits?
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("benefits", "policies_portal_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(benefits ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(benefits~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed - only position was selected in this case
+b1b3<-lm(benefits~ policies_portal_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(b1b3)
+
+#view summary stats for selected model
+summary(b1b3)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(b1b3)
+shapiro.test(b1b3$residuals) #assess normality of residuals
+
+```
+
+
+## harms 1a
 
 ### h1a1 Does existence of department policies influence perceived harms?
 ```{r}
@@ -666,12 +909,135 @@ shapiro.test(h1a3$residuals) #assess normality of residuals
 
 ```
 
-# workflow impact
+## harms 1b 
+
+### h1b1 Does GC involvement in department policies influence perceived harms?
+```{r}
+#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1b" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
+
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("harms", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(harms ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(harms~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed - only position was selected in this case
+h1b1<-lm(harms~ policies_dept_1b + position + ordering_provider, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(h1b1)
+
+#view summary stats for selected model
+summary(h1b1)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(h1b1)
+shapiro.test(h1b1$residuals) #assess normality of residuals
+
+```
+
+### h1b2 Does GC involvement in institutional policies influence perceived harms?
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("harms", "policies_institutional_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(harms ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(harms~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed - only position was selected in this case
+h1b2<-lm(harms~ policies_institutional_1b + position + ordering_provider + demo_years, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(h1b2)
+
+#view summary stats for selected model
+summary(h1b2)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(h1b2)
+shapiro.test(h1b2$residuals) #assess normality of residuals
+
+```
+
+### h1b3 Does GC involvement in portal policies influence perceived harms?
+```{r}
+#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1b" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
+
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d, select = c("harms", "policies_portal_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(harms ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(harms~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables ***change these as needed - only position was selected in this case
+h1b3<-lm(harms~ policies_portal_1b + position + ordering_provider, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(h1b3)
+
+#view summary stats for selected model
+summary(h1b3)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(h1b3)
+shapiro.test(h1b3$residuals) #assess normality of residuals
+
+```
+
+# workflow impact 1a
+
+```{r}
+# drop observations 94 and 88
+data_d1 <- data[-c(94, 88), ]
+```
+
 
 ### w1a1
 ```{r}
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("work", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d1, select = c("work", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -708,7 +1074,7 @@ shapiro.test(w1a1$residuals) #assess normality of residuals
 ### w1a2
 ```{r}
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data, select = c("work", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d1, select = c("work", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -745,7 +1111,7 @@ shapiro.test(w1a2$residuals) #assess normality of residuals
 
 ```{r}
 #subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("work", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
+tmp<- subset(data_d1, select = c("work", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
              
 #subset cases with non-missing data
 tmp<-tmp[complete.cases(tmp),]
@@ -779,10 +1145,121 @@ shapiro.test(w1a3$residuals) #assess normality of residuals
 
 ```
 
+# workflow impact 1b
+### w1b1
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d1, select = c("work", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1b1<-lm(work~ policies_dept_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1b1)
+
+#view summary stats for selected model
+summary(w1b1)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1b1)
+shapiro.test(w1b1$residuals) #assess normality of residuals
+
+```
+
+### w1b2
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d1, select = c("work", "policies_institutional_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1b2<-lm(work~ policies_institutional_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1b2)
+
+#view summary stats for selected model
+summary(w1b2)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1b2)
+shapiro.test(w1b2$residuals) #assess normality of residuals
+
+```
+### w1b3
+
+```{r}
+#subset the variables that you are considering using in the model ***change these if needed
+tmp<- subset(data_d1, select = c("work", "policies_portal_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
+             
+#subset cases with non-missing data
+tmp<-tmp[complete.cases(tmp),]
+
+#define intercept-only model
+intercept<-lm(work ~ 1, data = tmp)
+
+#define model with all predictors
+all<-lm(work~., data = tmp)
+
+#perform forward and back stepwise regression
+both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
+
+#view covariates selected by stepwise selection
+both$coefficients
+
+#fit model using these variables
+w1b3<-lm(work~ policies_portal_1b + position, data = tmp)
+
+#check for multicollinearity - calculate variance-inflation factor
+car::vif(w1b3)
+
+#view summary stats for selected model
+summary(w1b3)
+
+#assess normality
+#regression diagnostics
+library(ggfortify)
+autoplot(w1b3)
+shapiro.test(w1b3$residuals) #assess normality of residuals
+
+```
 
 
 
-# create regression table
+# create regression tables for 1a analyses
 ```{r}
 stargazer(b1a1, b1a2, b1a3,
           type = "html",
@@ -806,6 +1283,33 @@ stargazer(w1a1, w1a2, w1a3,
           title = "Effects of deparmental, institutional, and portal policies on perceived workflow impact")
 
 #*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://urldefense.com/v3/__https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf__;!!DaRZpAeNFA!ZuisxG4j1abrrrKI_q0F4G7osS-dcjwJrQXni8v0QxF1kb1CJZkYROoiqxQj9_DKpYLcEBmLvwTEP-ySAEMAdxWkrQ$ [cran[.]r-project[.]org]
+
+```
+
+# create regression tables for 1b analyses
+```{r}
+stargazer(b1b1, b1b2, b1b3,
+          type = "html",
+          out = "benefits_1b.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Effects of deparmental, institutional, and portal policies on perceived benefits")
+
+stargazer(h1b1, h1b2, h1b3,
+          type = "html",
+          out = "harms_1b.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Effects of deparmental, institutional, and portal policies on perceived harms")
+
+stargazer(w1b1, w1b2, w1b3,
+          type = "html",
+          out = "workflow_1b.doc", #output will be as a separate word document
+          single.row = TRUE,
+          no.space = TRUE,
+          title = "Effects of deparmental, institutional, and portal policies on perceived workflow impact")
+
+#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://urldefense.com/v3/__https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf__;!!DaRZpAeNFA!ZuisxG4j1bbrrrKI_q0F4G7osS-dcjwJrQXni8v0QxF1kb1CJZkYROoiqxQj9_DKpYLcEBmLvwTEP-ySAEMAdxWkrQ$ [cran[.]r-project[.]org]
 
 ```
 
