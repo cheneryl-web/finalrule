@@ -7,7 +7,7 @@ output:
   html_document: default
 ---
 
-```{r setup, include=TRUE, warning=FALSE}
+```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 # set working directory
@@ -20,10 +20,12 @@ library(tidyverse)
 library(ggplot2)
 library(tidyverse)
 library(arsenal)
+library(coin)
 library(psych)
 library(corrplot)
 library(car)
 library(stargazer)
+library(likert)
 
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
 data_labels<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
@@ -144,7 +146,6 @@ data$demo_list <- factor(data$demo_list,
                                             "Region 6 (AK, CA, HI, ID, NV, OR, WA, British Columbia)"))
 
 
-
 # convert race/ethnicity variables to factor
 for (i in 1:8) {
   var_name <- paste0("demo_raceethnicity___", i)
@@ -152,6 +153,39 @@ for (i in 1:8) {
                              levels = 0:1, 
                              labels = c("NA", "1"))
 }
+
+
+
+# Create a mapping for race categories
+race_categories <- c("demo_raceethnicity___1", "demo_raceethnicity___2", "demo_raceethnicity___3", 
+                     "demo_raceethnicity___4", "demo_raceethnicity___5", "demo_raceethnicity___6")
+
+race_mapping <- setNames(c("African American or Black", 
+                           "Native American/ Alaska Native/ First Nations/ Indigenous", 
+                           "Asian", "Native Hawaiian/ Pacific Islander", 
+                           "White", "Other"),
+                         race_categories)
+
+
+# Create the 'race' variable
+data$race <- apply(data[race_categories], 1, function(x) {
+  selected <- which(x == 1)
+  selected_names <- names(selected)
+  if(length(selected) > 1) {
+    return("Multiple")
+  } 
+  else if(length(selected) == 1) {
+    return(race_mapping[selected_names])
+  } 
+  else {
+    return(NA)
+  }
+})
+
+# Create the 'ethnicity' variable
+data$ethnicity <- ifelse(data$demo_raceethnicity___7 == 1, "Non-Hispanic or -Latino",
+                      ifelse(data$demo_raceethnicity___8 == 1, "Hispanic or Latino", NA))
+
 
 #clean workplace setting variable
 workplace_labels <- list(
@@ -166,7 +200,7 @@ workplace_labels <- list(
   "Private Company-Biotechnology/ Research development, Digital Health/Software, Pharmaceutical",
   "Other")
 
-# Create a matrix for the workplacesettings
+# Create a matrix for the workplacesetting variable
 workplace_matrix <- data.frame(data[ , grepl("^workplacesetting___", names(data))])
 
 
@@ -192,6 +226,50 @@ data$workplace_multiple <- apply(workplace_matrix, 1, function(x) {
   }
 })
 
+# clean gender variable
+demo_gender_labels <- list(
+  "Man",
+  "Non-binary",
+  "Transgender",
+  "Woman",
+  "Other",
+  "Unsure/questioning",
+  "Prefer not to say")
+
+
+# Create a matrix for the demo_genders
+demo_gender_matrix <- data.frame(data[ , grepl("^demo_gender___", names(data))])
+
+
+# Create the demo_gender variable following your requirements
+data$demo_gender <- apply(demo_gender_matrix, 1, function(x) {
+  indices <- which(x == 1)
+  if(length(indices) > 1) {
+    return("Multiple")
+  } else if(length(indices) == 1) {
+    return(demo_gender_labels[[indices]])
+  } else {
+    return("None")
+  }
+})
+
+# Create the demo_gender_multiple variable
+data$demo_gender_multiple <- apply(demo_gender_matrix, 1, function(x) {
+  indices <- which(x == 1)
+  if(length(indices) > 1) {
+    return(paste(demo_gender_labels[indices], collapse = ","))
+  } else {
+    return(NA)
+  }
+})
+
+
+# combine "no" variables for ordering provider
+data$ordering_provider_r <- dplyr::recode(data$ordering_provider, 
+                                  "No. I place the order but am not listed as the ordering provider" = "Non-ordering provider", 
+                                  "No. I cannot place or sign orders" = "Non-ordering provider",
+                                  "No. I do not order in my role" = "Non-ordering provider",
+                                  .default = "Ordering provider")
 
 # set up labels for the participant characteristics table ***This list isn't complete - add the rest of the variable names here
 labs<- c(demo_age = "Age",
@@ -201,31 +279,11 @@ labs<- c(demo_age = "Age",
 
 ```
 
-## Summary table
-```{r, results='asis'}
-# select the relevant variables
-desc<-data%>%
-  select(position, demo_years, workplacesetting, ordering_provider, demo_list, demo_raceethnicity___1:demo_raceethnicity___8, demo_age) # ***add more demographic variables if needed
-
-# variable labels
-labels(desc)<-labs
-
-#create formula
-myvars<-names(desc)
-tmp<-formulize(X=myvars[1:(ncol(desc))])
-
-# *** if you wanted to stratify by a variable, you could do this: tmp<-formulize("***variable name", myvars[1:(ncol(desc))])
-
-summary(tableby(tmp, data = desc,
-              digits = 2L))
-
-
-```
 
 ## Factor analysis for outcome variables
 
 ### Perceived benefits
-```{r}
+```{r, include=FALSE}
 # subset perceived benefits variables
 ben <- data %>%
   select(pt_empower:pt_share) %>%
@@ -287,7 +345,7 @@ data$benefits <- rowSums(data[,c("pt_empower", "pt_processing", "pt_assurance", 
 
 ```
 ### Perceived harms
-```{r}
+```{r, include=FALSE}
 # subset perceived harms variables
 harm <- data %>%
   select(pt_reaction:pt_contact) %>%
@@ -345,7 +403,7 @@ data$harms <- rowSums(data[,c("pt_reaction", "pt_understand", "pt_contact")], na
 ```
 
 ### Perceived impact on workflow
-```{r}
+```{r, include=FALSE}
 # subset perceived workflow impact variables
 work <- data %>%
   select(checking:coordination_other) %>%
@@ -406,23 +464,64 @@ data$work <- rowSums(data[,c("checking", "timing", "communications", "change", "
 
 ```
 
-## Bivariate analyses for presence/absence of dept policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for departmental/workgroup policies
+# convert policies variables to factor
+```{r, include=FALSE}
+var_names <- names(data)[which(names(data) == "policies_instituitional"):which(names(data) == "policies_portal")]
 
+# Loop through each variable name
+for (var in var_names) {
+
+  # Create a temporary variable leaving as numeric
+  temp_var <- data[[var]]
+
+  # Recode level 6 as NA
+  temp_var[temp_var == 6] <- NA
+
+  # Create the new variable as a factor
+  data[paste(var, "_r", sep="")] <- factor(temp_var)
+}
+
+# Create a factor level
+factor_levels <- setNames(c("This exists and a GC was involved",
+                            "This exists and a GC was NOT involved",
+                            "This exists and I don't know if a GC was involved",
+                            "This DOES NOT exist",
+                            "I am not sure",
+                            "Not applicable at my workplace"),
+                          1:6)
+
+# Get the column names
+col_names <- names(data)
+
+# Define the range of column names
+start_col <- which(col_names == "policies_instituitional_r")
+end_col <- which(col_names == "policies_portal_r")
+selected_cols <- col_names[start_col:end_col]
+
+
+# Convert all relevant variables
+data <- data %>%
+  mutate(across(selected_cols, ~ fct_explicit_na(factor(., levels = names(factor_levels), labels = factor_levels), na_level = "Not applicable at my workplace")))
+
+
+
+```
+
+# Summary table overall
+```{r, results='asis', echo=FALSE}
 # select the relevant variables
 desc<-data%>%
-  select(policies_dept_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
-
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
+  select(ordering_provider, demo_years, position, workplacesetting, demo_list,
+         race, ethnicity, demo_age, demo_gender,
+          policies_instituitional_r:policies_portal_r, benefits, harms, work
+         )
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize("policies_dept_1a", myvars[2:(ncol(desc))])
+tmp<-formulize(X=myvars[2:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
               digits = 2L))
@@ -430,658 +529,225 @@ summary(tableby(tmp, data = desc,
 
 ```
 
-## Bivariate analyses for presence/absence of institutional policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for institutional policies
-
+# Summary table by ordering provider
+```{r, results='asis', echo=FALSE}
 # select the relevant variables
 desc<-data%>%
-  select(policies_institutional_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+  select(ordering_provider_r, ordering_provider, demo_years, position, workplacesetting, demo_list,
+         race, ethnicity, demo_age, demo_gender,
+          policies_instituitional_r:policies_portal_r, benefits, harms, work
+         )
 
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
+
+
+# Check the new column names
+print(names(desc))
+
+# After the column names have been cleaned up, you can run your code again:
+
+tmp <- formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize("policies_institutional_1a", myvars[2:(ncol(desc))])
+tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
-              digits = 2L))
+              digits = 2L), pfootnote = TRUE)
 
 
 ```
 
 
-## Bivariate analyses for presence/absence of portal policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for portal policies
+# Figure
+## 1a. workflow impact
+
+```{r, echo=FALSE, results='asis'}
+
+#Figure 1a. workflow impact
+work.data<-data%>%select(ordering_provider_r, 
+  checking:sending_results)
+
+# Recode
+# Define the mapping for the recoding
+factor_levels <- c("1" = "Strongly disagree", 
+                   "2" = "Disagree", 
+                   "3" = "Neither agree nor disagree", 
+                   "4" = "Agree", 
+                   "5" = "Strongly agree", 
+                   "6" = NA)
+
+# Define a list of old and new names
+name_mapping <- list("checking" = "need to check the electronic medical record and/or my email more frequently",
+                     "timing" = "have less time to review results before discussing with a patient",
+                     "communications" = "receive increased patient communications prior to my results review and disclosure",
+                     "change" = "changed my workflow to comply with the Final Rule",
+                     "coordination_dept" = "face coordination of care challenges within my department (example, results going to a geneticist first delaying my review of results)",
+                     "coordination_other" = "face coordination of care challenges with providers outside of my department (example, patients seeing results and messaging non-ordering providers for interpretation before I can discuss",
+                     "sending_results" = "have one less administrative task because results are sent to patients automatically",
+                     "pt_reaction" = "could have strong emotional reactions when reviewing results/notes on their own",
+                     "pt_understand" = "could misunderstand or misinterpret results",
+                     "pt_contact" = "could contact the inappropriate party to discuss results (example: direct laboratory or non-ordering provider contact)",
+                     "pt_knowledge" = "have more knowledge/context/questions at our disclosure session due to previous results review",
+                     "pt_empower" = "are empowered due to direct access to their medicalrecords",
+                     "pt_processing" = "have increased engagement due to time to emotionallyprocess results on their own before our conversation",
+                     "pt_assurance" = "could have earlier reassurance about results",
+                     "pt_action" = "could take earlier action on results",
+                     "pt_share" = "have easier access to share their results/chart with other providers without genetic counselor involvement")
+
+# remove NA values
+work.data <- na.omit(work.data)
+
+# Apply recoding 
+work.data <- work.data %>%
+   mutate(across(-ordering_provider_r, ~factor(., levels = names(factor_levels), labels = factor_levels)))
+# Rename variables 
+for (i in seq_along(name_mapping)) {
+  names(work.data)[names(work.data) == names(name_mapping)[i]] <- name_mapping[[i]]
+}
+
+# Create likert object, grouped by 'ordering_provider_r'
+likert_obj <- likert(work.data[ , -1], grouping = work.data$ordering_provider_r)
+
+# Plot
+fig1a <- plot(likert_obj) +  
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n=6,"RdYlBu"), 
+                    breaks = c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree")) +
+  guides(fill = guide_legend(title="")) + 
+  labs(title="Workflow impact")
+
+# create table version
 
 # select the relevant variables
-desc<-data%>%
-  select(policies_portal_1a, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+desc<-work.data
 
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize("policies_portal_1a", myvars[2:(ncol(desc))])
+tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
-              digits = 2L))
+              digits = 2L), pfootnote = TRUE)
 
 
 ```
+## 1b. harms
+```{r, echo=FALSE,results='asis'}
+# Add 'ordering_provider_r' to the selected columns
+harm.data <- data %>%
+   select(ordering_provider_r, pt_reaction:pt_contact)
 
+# remove NA values
+harm.data <- na.omit(harm.data)
 
+# Apply recoding 
+harm.data <- harm.data %>%
+   mutate(across(-ordering_provider_r, ~factor(., levels = names(factor_levels), labels = factor_levels)))
+# Rename variables 
+for (i in seq_along(name_mapping)) {
+  names(harm.data)[names(harm.data) == names(name_mapping)[i]] <- name_mapping[[i]]
+}
 
-# 1b bivariate analyses
+# Create likert object, grouped by 'ordering_provider_r'
+likert_obj <- likert(harm.data[ , -1], grouping = harm.data$ordering_provider_r)
 
+# Plot
+fig1b <- plot(likert_obj) +  
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n=6,"RdYlBu"), 
+                    breaks = c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree")) +
+  guides(fill = guide_legend(title="")) + 
+  labs(title="Harms")
 
-## Bivariate analyses for GC involvement of dept policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for departmental/workgroup policies
-
+# create table version
 # select the relevant variables
-desc<-data%>%
-  select(policies_dept_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+desc<-harm.data
 
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize("policies_dept_1b", myvars[2:(ncol(desc))])
+tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
-              digits = 2L))
+              digits = 2L), pfootnote = TRUE)
 
 
 ```
 
-## Bivariate analyses for GC involvement of institutional policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for institutional policies
+## 1c. benefits
+```{r, echo=FALSE, results='asis'}
+# Add 'ordering_provider_r' to the selected columns
+ben.data <- data %>%
+   select(ordering_provider_r, pt_knowledge:pt_share)
 
+# remove NA values
+ben.data <- na.omit(ben.data)
+
+# Apply recoding 
+ben.data <- ben.data %>%
+   mutate(across(-ordering_provider_r, ~factor(., levels = names(factor_levels), labels = factor_levels)))
+# Rename variables 
+for (i in seq_along(name_mapping)) {
+  names(ben.data)[names(ben.data) == names(name_mapping)[i]] <- name_mapping[[i]]
+}
+
+# Create likert object, grouped by 'ordering_provider_r'
+likert_obj <- likert(ben.data[ , -1], grouping = ben.data$ordering_provider_r)
+
+# Plot
+fig1c <- plot(likert_obj) +  
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n=6,"RdYlBu"), 
+                    breaks = c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree")) +
+  guides(fill = guide_legend(title="")) + 
+  labs(title="Benefits")
+
+# create table version of the figure
 # select the relevant variables
-desc<-data%>%
-  select(policies_institutional_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
+desc<-ben.data
 
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize("policies_institutional_1b", myvars[2:(ncol(desc))])
+tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
-              digits = 2L))
-
-
+              digits = 2L), pfootnote = TRUE)
 ```
 
-
-## Bivariate analyses for GC involvement of portal policy (how is each individual predictor related to each individual outcome and outcome categories)
-```{r, results='asis'}
-# to do a summary table for portal policies
-
-# select the relevant variables
-desc<-data%>%
-  select(policies_portal_1b, benefits, harms, work, ordering_provider, position, workplacesetting, demo_list, demo_years, demo_age, demo_gender___1:demo_gender___8)
-
-#convert numeric to factor variables, if needed ***may not be needed if converted to factor in an earlier step
-#desc$pt_empower<-as.factor(desc$pt_empower)
-
-# variable labels
-labels(desc)<-labs
-
-#create formula
-myvars<-names(desc)
-tmp<-formulize("policies_portal_1b", myvars[2:(ncol(desc))])
-
-summary(tableby(tmp, data = desc,
-              digits = 2L))
-
-
-```
-
-
-## Multiple linear regression models relating predictors (resources, policies, changes to practice) to outcomes (impact on workflow, pt harms, pt benefits), adjusting for GC and workplace characteristics
-
+# put figure together
 ```{r}
-# drop 3 outliers: 78, 80, 98
-data_d <- data[-c(78, 80, 98), ]
+library(ggpubr)
+frplot<-ggarrange(fig1a, fig1b, fig1c,
+                  labels=c("A","B", "C"),
+                  ncol=3, nrow=1, common.legend = TRUE)
 
-```
-
-## benefits 1a
-
-### b1a1: Does existence of department policies influence perceived benefits?
-```{r}
-#subset the variables that you are considering using in the model
-tmp<- subset(data_d, select = c("benefits", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(benefits ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(benefits~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-b1a1<-lm(benefits~ policies_dept_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(b1a1)
-
-#view summary stats for selected model
-summary(b1a1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(b1a1)
-shapiro.test(b1a1$residuals) #assess normality of residuals
-```
-
-### b1a2 Does existence of institutional policies influence perceived benefits?
-
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("benefits", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(benefits ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(benefits~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-b1a2<-lm(benefits~ policies_institutional_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(b1a2)
-
-#view summary stats for selected model
-summary(b1a2)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(b1a2)
-shapiro.test(b1a2$residuals) #assess normality of residuals
+frplot
 
 ```
 
 
-### b1a3 Does existence of portal policies influence perceived benefits?
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("benefits", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
 
-#define intercept-only model
-intercept<-lm(benefits ~ 1, data = tmp)
 
-#define model with all predictors
-all<-lm(benefits~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-b1a3<-lm(benefits~ policies_portal_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(b1a3)
-
-#view summary stats for selected model
-summary(b1a3)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(b1a3)
-shapiro.test(b1a3$residuals) #assess normality of residuals
-
-```
-
-## benefits 1b
-
-### b1b1: Does GC involvement in department policies influence perceived benefits?
-```{r}
-#subset the variables that you are considering using in the model
-tmp<- subset(data_d, select = c("benefits", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(benefits ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(benefits~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-b1b1<-lm(benefits~ policies_dept_1b + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(b1b1)
-
-#view summary stats for selected model
-summary(b1b1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(b1b1)
-shapiro.test(b1b1$residuals) #assess normality of residuals
-```
-
-## harms 1a
-
-### h1a1 Does existence of department policies influence perceived harms?
-```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("harms", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(harms ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(harms~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-h1a1<-lm(harms~ policies_dept_1a + position + ordering_provider, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(h1a1)
-
-#view summary stats for selected model
-summary(h1a1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(h1a1)
-shapiro.test(h1a1$residuals) #assess normality of residuals
-
-```
-### h1a2 Does existence of institutional policies influence perceived harms?
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("harms", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(harms ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(harms~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-h1a2<-lm(harms~ policies_institutional_1a + position + ordering_provider + demo_years, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(h1a2)
-
-#view summary stats for selected model
-summary(h1a2)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(h1a2)
-shapiro.test(h1a2$residuals) #assess normality of residuals
-
-```
-
-### h1a3 Does existence of portal policies influence perceived harms?
-```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1a" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("harms", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(harms ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(harms~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-h1a3<-lm(harms~ policies_portal_1a + position + ordering_provider, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(h1a3)
-
-#view summary stats for selected model
-summary(h1a3)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(h1a3)
-shapiro.test(h1a3$residuals) #assess normality of residuals
-
-```
-
-## harms 1b 
-
-### h1b1 Does GC involvement in department policies influence perceived harms?
-```{r}
-#*** WRITE CODE HERE - use the previous code as a template using "policies_dept_1b" as the main predictor, "benefits" as the outcome, and the same covariates. Change the formula if different covariates are selected via stepwise selection
-
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d, select = c("harms", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(harms ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(harms~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables ***change these as needed - only position was selected in this case
-h1b1<-lm(harms~ policies_dept_1b + position + ordering_provider, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(h1b1)
-
-#view summary stats for selected model
-summary(h1b1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(h1b1)
-shapiro.test(h1b1$residuals) #assess normality of residuals
-
-```
-
-
-
-# workflow impact 1a
-
-```{r}
-# drop observations 94 and 88
-data_d1 <- data[-c(94, 88), ]
-```
-
-
-### w1a1
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d1, select = c("work", "policies_dept_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(work ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(work~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-w1a1<-lm(work~ policies_dept_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(w1a1)
-
-#view summary stats for selected model
-summary(w1a1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(w1a1)
-shapiro.test(w1a1$residuals) #assess normality of residuals
-
-```
-
-### w1a2
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d1, select = c("work", "policies_institutional_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(work ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(work~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-w1a2<-lm(work~ policies_institutional_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(w1a2)
-
-#view summary stats for selected model
-summary(w1a2)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(w1a2)
-shapiro.test(w1a2$residuals) #assess normality of residuals
-
-```
-### w1a3
-
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d1, select = c("work", "policies_portal_1a", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(work ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(work~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-w1a3<-lm(work~ policies_portal_1a + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(w1a3)
-
-#view summary stats for selected model
-summary(w1a3)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(w1a3)
-shapiro.test(w1a3$residuals) #assess normality of residuals
-
-```
-
-# workflow impact 1b
-### w1b1
-```{r}
-#subset the variables that you are considering using in the model ***change these if needed
-tmp<- subset(data_d1, select = c("work", "policies_dept_1b", "ordering_provider", "position", "workplacesetting", "demo_years"))
-             
-#subset cases with non-missing data
-tmp<-tmp[complete.cases(tmp),]
-
-#define intercept-only model
-intercept<-lm(work ~ 1, data = tmp)
-
-#define model with all predictors
-all<-lm(work~., data = tmp)
-
-#perform forward and back stepwise regression
-both<-step(intercept, direction= "both", scope = formula(all), trace = 0)
-
-#view covariates selected by stepwise selection
-both$coefficients
-
-#fit model using these variables
-w1b1<-lm(work~ policies_dept_1b + position, data = tmp)
-
-#check for multicollinearity - calculate variance-inflation factor
-car::vif(w1b1)
-
-#view summary stats for selected model
-summary(w1b1)
-
-#assess normality
-#regression diagnostics
-library(ggfortify)
-autoplot(w1b1)
-shapiro.test(w1b1$residuals) #assess normality of residuals
-
-```
-
-### too few observations to do analyses w1b2 and w1b3 (n=10/9 who had GC involved in policy)
-
-
-
-# create regression tables for 1a analyses
-```{r}
-stargazer(b1a1, b1a2, b1a3,
-          type = "html",
-          out = "benefits_1a.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Effects of departmental, institutional, and portal policies on perceived benefits")
-
-stargazer(h1a1, h1a2, h1a3,
-          type = "html",
-          out = "harms_1a.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Effects of departmental, institutional, and portal policies on perceived harms")
-
-stargazer(w1a1, w1a2, w1a3,
-          type = "html",
-          out = "workflow_1a.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Effects of departmental, institutional, and portal policies on perceived workflow impact")
-
-#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://urldefense.com/v3/__https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf__;!!DaRZpAeNFA!ZuisxG4j1abrrrKI_q0F4G7osS-dcjwJrQXni8v0QxF1kb1CJZkYROoiqxQj9_DKpYLcEBmLvwTEP-ySAEMAdxWkrQ$ [cran[.]r-project[.]org]
-
-```
-
-# create regression tables for 1b analyses
-```{r}
-stargazer(b1b1, h1b1,
-          type = "html",
-          out = "harms_benefits_1b.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Effects of departmental, institutional, and portal policies on perceived benefits")
-
-stargazer(w1b1,
-          type = "html",
-          out = "workflow_1b.doc", #output will be as a separate word document
-          single.row = TRUE,
-          no.space = TRUE,
-          title = "Effects of departmental, policies on perceived workflow impact")
-
-#*** you can customize variable labels, order of variables, which stats to exclude, etc. - see https://urldefense.com/v3/__https://cran.r-project.org/web/packages/stargazer/vignettes/stargazer.pdf__;!!DaRZpAeNFA!ZuisxG4j1bbrrrKI_q0F4G7osS-dcjwJrQXni8v0QxF1kb1CJZkYROoiqxQj9_DKpYLcEBmLvwTEP-ySAEMAdxWkrQ$ [cran[.]r-project[.]org]
-
-```
 
