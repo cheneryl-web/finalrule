@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 # set working directory
-setwd("C:/Users/clowe7/OneDrive - Stanford/Final Rule Analysis") #***You'll want to change the working directory to reflect the location where your files are stored
+setwd("C:/Users/clowe7/OneDrive - Stanford/Final Rule Analysis") 
 
 # install packages
 library(dplyr)
@@ -26,6 +26,7 @@ library(corrplot)
 library(car)
 library(stargazer)
 library(likert)
+library(forcats)
 
 # load data file ***Make sure that the file is in the working directory that you set above; otherwise, you will need to specify the full pathway
 data_labels<-read.csv("102 Survey_AssessingGeneticCoun-ForDataAnalysis_DATA_LABELS_2024-02-06_1407 (1).csv")
@@ -88,6 +89,7 @@ data$policies_portal_1b <- ifelse(data$policies_portal == 1, 2,
 data$policies_dept_1b <- as.factor(data$policies_dept_1b)
 data$policies_institutional_1b <- as.factor(data$policies_institutional_1b)
 data$policies_portal_1b <- as.factor(data$policies_portal_1b)
+data$demo_yeargraduate<-as.factor(data$demo_yeargraduate)
 
 #perceived harms
 data$pt_reaction <- ifelse(data$pt_reaction == 6, NA, data$pt_reaction)
@@ -276,6 +278,40 @@ labs<- c(demo_age = "Age",
          demo_list = "Region",
          demo_years = "Years of experience as a practicing GC"
 )
+
+# create variable for non-ordering vs ordering vs non-direct patient care
+data <- data %>%
+  mutate(pos_order_r = case_when(
+    position == "Non-direct patient care" ~ "Non-direct patient care",
+    ordering_provider_r == "Ordering provider" ~ "Ordering provider",
+    ordering_provider_r == "Non-ordering provider" ~ "Non-ordering provider"
+  ))
+
+# create variable labels
+labs<- c(ordering_provider = "Ordering provider",
+         ordering_provider_r = "Ordering provider - dichotomized",
+         position = "Position type",
+         workplacesetting = "Workplace setting",
+         demo_yeargraduate = "Graduation year",
+         demo_years = "Years of experience",
+         demo_list = "Region",
+         demo_age = "Age",
+         race = "Race",
+         ethnicity = "Ethnicity",
+         demo_gender = "Gender",
+         policies_instituitional_r = "institutional level policies for results/notes release",
+         policies_dept_r = "department, division, or workgroup level policies forresults/notes release",
+         workgroup_r = "an established work group for Final Rule implementation and optimization",
+         pointperson_r = "a point person for questions about Final Rule/release ofresults/notes (provider or patient facing)",
+         website_r = "a website on the Final Rule/release of results/notes (provider or patient facing)",
+         tipsheet_r = "tipsheet(s) on the Final Rule/release of results/notes (provider or patient facing)",
+         blocking_r = "a system to block results/notes release when aligned with the Final Rule",
+         pre_test_r = "changed pre-test counseling note documentation",
+         post_test_r = "changed post-test counseling note documentation",
+         labreport_r = "changed laboratory report language",
+         policies_portal_r = "changed patient portal policies"
+)
+
 
 ```
 
@@ -504,24 +540,25 @@ data <- data %>%
   mutate(across(selected_cols, ~ fct_explicit_na(factor(., levels = names(factor_levels), labels = factor_levels), na_level = "Not applicable at my workplace")))
 
 
-
 ```
 
 # Summary table overall
 ```{r, results='asis', echo=FALSE}
 # select the relevant variables
 desc<-data%>%
-  select(ordering_provider, demo_years, position, workplacesetting, demo_list,
+  select(ordering_provider, demo_years, position, workplacesetting, demo_list, demo_yeargraduate,
          race, ethnicity, demo_age, demo_gender,
-          policies_instituitional_r:policies_portal_r, benefits, harms, work
+        policies_instituitional_r:policies_portal_r
          )
+# keep NA as a label
+desc <- desc %>% mutate(across(everything(), ~fct_explicit_na(., na_level = "NA")))
 
 # variable labels
 labels(desc)<-labs
 
 #create formula
 myvars<-names(desc)
-tmp<-formulize(X=myvars[2:(ncol(desc))])
+tmp<-formulize(X=myvars[1:(ncol(desc))])
 
 summary(tableby(tmp, data = desc,
               digits = 2L))
@@ -529,14 +566,18 @@ summary(tableby(tmp, data = desc,
 
 ```
 
-# Summary table by ordering provider
+# Summary table by ordering provider and non-direct patient care
 ```{r, results='asis', echo=FALSE}
 # select the relevant variables
 desc<-data%>%
-  select(ordering_provider_r, ordering_provider, demo_years, position, workplacesetting, demo_list,
+  select(pos_order_r, ordering_provider, position, workplacesetting, demo_list, demo_years, 
          race, ethnicity, demo_age, demo_gender,
-          policies_instituitional_r:policies_portal_r, benefits, harms, work
-         )
+          policies_instituitional_r:policies_portal_r)
+
+# Handle NA as a level
+# List of varaibles expected to be factors
+desc <- desc %>% mutate(across(everything(), ~fct_explicit_na(., na_level = "NA")))
+
 
 # Replace spaces with underscores and remove special characters
 names(desc) <- gsub(" ", "_", names(desc))
@@ -546,9 +587,31 @@ names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
 # Check the new column names
 print(names(desc))
 
-# After the column names have been cleaned up, you can run your code again:
+# variable labels
+labels(desc)<-labs
 
-tmp <- formulize("ordering_provider_r", myvars[2:(ncol(desc))])
+#create formula
+myvars<-names(desc)
+tmp<-formulize("pos_order_r", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc,
+              digits = 2L), pfootnote = TRUE)
+
+
+```
+
+# Summary table by ordering provider
+```{r, results='asis', echo=FALSE}
+# select the relevant variables
+desc<-data%>%
+  select(ordering_provider_r, ordering_provider, position, workplacesetting, demo_list, demo_years, 
+         race, ethnicity, demo_age, demo_gender,
+          policies_instituitional_r:policies_portal_r, benefits, harms, work)
+
+
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
 
 # variable labels
 labels(desc)<-labs
@@ -562,6 +625,31 @@ summary(tableby(tmp, data = desc,
 
 
 ```
+# Summary table by ordering provider
+```{r, results='asis', echo=FALSE}
+# select the relevant variables
+desc<-data%>%
+  select(ordering_provider_r, 
+          policies_instituitional_r:policies_portal_r)
+
+
+# Replace spaces with underscores and remove special characters
+names(desc) <- gsub(" ", "_", names(desc))
+names(desc) <- gsub("[^[:alnum:]_]", "", names(desc))
+
+# variable labels
+labels(desc)<-labs
+
+#create formula
+myvars<-names(desc)
+tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
+
+summary(tableby(tmp, data = desc, cat.test = "fe",
+              digits = 2L), pfootnote = TRUE)
+
+
+```
+
 
 
 # Figure
@@ -637,7 +725,7 @@ labels(desc)<-labs
 myvars<-names(desc)
 tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
-summary(tableby(tmp, data = desc,
+summary(tableby(tmp, data = desc, cat.test= "fe",
               digits = 2L), pfootnote = TRUE)
 
 
@@ -684,7 +772,7 @@ labels(desc)<-labs
 myvars<-names(desc)
 tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
-summary(tableby(tmp, data = desc,
+summary(tableby(tmp, data = desc, cat.test = "fe",
               digits = 2L), pfootnote = TRUE)
 
 
@@ -732,7 +820,7 @@ labels(desc)<-labs
 myvars<-names(desc)
 tmp<-formulize("ordering_provider_r", myvars[2:(ncol(desc))])
 
-summary(tableby(tmp, data = desc,
+summary(tableby(tmp, data = desc, cat.test = "fe",
               digits = 2L), pfootnote = TRUE)
 ```
 
